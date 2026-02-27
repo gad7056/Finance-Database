@@ -1,0 +1,1 @@
+- add requirements.txt or pyproject.toml to project. user will be able to run pip install -r requirements.txt to configure local venv
