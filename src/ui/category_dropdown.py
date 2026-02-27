@@ -1,10 +1,9 @@
 # A custom Qt widget for category dropdown
 
 # from PyQt6.QtWidgets import QComboBox
-from ui.group_combo_box import GroupComboBox
-
 from models.models import Category
 from repositories.category_repository import CategoryRepository
+from ui.group_combo_box import GroupComboBox
 
 
 class CategoryDropdown(GroupComboBox):
@@ -27,8 +26,11 @@ class CategoryDropdown(GroupComboBox):
         self.addChild(" ")
         parents = self.category_repository.list_parent_categories()
         for parent in parents:
-            group = self.addGroup(parent.name)
             children = self.category_repository.list_children_of(parent.id)
+            # do not add parent category as group if it has no children
+            if not children:
+                continue
+            group = self.addGroup(parent.name)
             for child in children:
                 group.addChild(child.name, child.id)
         return

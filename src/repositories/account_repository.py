@@ -1,8 +1,8 @@
 # repositories/account_repository.py
 
-from database.connection import get_connection
-from models.models import Account, AccountType
 from sqlite3 import Connection
+
+from models.models import Account, AccountType
 
 
 class AccountRepository:
@@ -27,16 +27,19 @@ class AccountRepository:
         :rtype: int
         """
         with self.connection as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO accounts (name, institution, type, number, is_active)
                 VALUES (?, ?, ?, ?, ?)
-            """, (
-                account.name,
-                account.institution,
-                account.type.value,
-                account.number,
-                int(account.is_active),
-            ))
+            """,
+                (
+                    account.name,
+                    account.institution,
+                    account.type.value,
+                    account.number,
+                    int(account.is_active),
+                ),
+            )
         return cursor.lastrowid
 
     # ----------------------------
@@ -54,8 +57,7 @@ class AccountRepository:
         """
         with self.connection as conn:
             row = conn.execute(
-                "SELECT * FROM accounts WHERE id = ?",
-                (account_id,)
+                "SELECT * FROM accounts WHERE id = ?", (account_id,)
             ).fetchone()
 
         if not row:
@@ -103,7 +105,8 @@ class AccountRepository:
         """
         with self.connection as conn:
             rows = conn.execute(
-                "SELECT DISTINCT institution FROM accounts").fetchall()
+                "SELECT DISTINCT institution FROM accounts"
+            ).fetchall()
 
         return [row["institution"] for row in rows if row["institution"]]
 
@@ -119,8 +122,7 @@ class AccountRepository:
         """
         with self.connection as conn:
             rows = conn.execute(
-                "SELECT * FROM accounts WHERE institution = ?",
-                (bank_name,)
+                "SELECT * FROM accounts WHERE institution = ?", (bank_name,)
             ).fetchall()
 
         return [
@@ -147,8 +149,7 @@ class AccountRepository:
         """
         with self.connection as conn:
             row = conn.execute(
-                "SELECT id FROM accounts WHERE name = ?",
-                (name,)
+                "SELECT id FROM accounts WHERE name = ?", (name,)
             ).fetchone()
 
         return row["id"] if row else None
@@ -165,7 +166,7 @@ class AccountRepository:
             print(bank)
             accounts = self.list_accounts_by_bank(bank)
             for acc in accounts:
-                print(f' - {acc.name} (x{acc.number[-4:]})')
+                print(f" - {acc.name} (x{acc.number[-4:]})")
 
     # ----------------------------
     # Update
@@ -183,18 +184,21 @@ class AccountRepository:
             raise ValueError("Account must have an id to update")
 
         with self.connection as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE accounts
                 SET name = ?, institution = ?, type = ?, number = ?, is_active = ?
                 WHERE id = ?
-            """, (
-                account.name,
-                account.institution,
-                account.type.value,
-                account.number,
-                int(account.is_active),
-                account.id,
-            ))
+            """,
+                (
+                    account.name,
+                    account.institution,
+                    account.type.value,
+                    account.number,
+                    int(account.is_active),
+                    account.id,
+                ),
+            )
 
     # ----------------------------
     # Delete
@@ -209,7 +213,4 @@ class AccountRepository:
         :return None:
         """
         with self.connection as conn:
-            conn.execute(
-                "DELETE FROM accounts WHERE id = ?",
-                (account_id,)
-            )
+            conn.execute("DELETE FROM accounts WHERE id = ?", (account_id,))

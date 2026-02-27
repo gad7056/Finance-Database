@@ -1,10 +1,10 @@
 # repositories/transaction_repository.py
 
 from datetime import date, datetime
-from typing import Optional
-from database.connection import get_connection
-from models.models import Transaction
 from sqlite3 import Connection
+from typing import Optional
+
+from models.models import Transaction
 
 
 class TransactionRepository:
@@ -29,7 +29,8 @@ class TransactionRepository:
         :rtype: int
         """
         with self.connection as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO transactions (
                     account_id,
                     date_added,
@@ -45,20 +46,22 @@ class TransactionRepository:
                     comment
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                tx.account_id,
-                tx.date_added.isoformat(),
-                tx.date_modified.isoformat(),
-                tx.source,
-                tx.transaction_date.isoformat(),
-                tx.post_date.isoformat() if tx.post_date else None,
-                tx.description,
-                tx.amount,
-                tx.category_id,
-                int(tx.verified_receipt),
-                int(tx.verified_statement),
-                tx.comment
-            ))
+            """,
+                (
+                    tx.account_id,
+                    tx.date_added.isoformat(),
+                    tx.date_modified.isoformat(),
+                    tx.source,
+                    tx.transaction_date.isoformat(),
+                    tx.post_date.isoformat() if tx.post_date else None,
+                    tx.description,
+                    tx.amount,
+                    tx.category_id,
+                    int(tx.verified_receipt),
+                    int(tx.verified_statement),
+                    tx.comment,
+                ),
+            )
         return cursor.lastrowid
 
     # ----------------------------
@@ -76,8 +79,7 @@ class TransactionRepository:
         """
         with self.connection as conn:
             row = conn.execute(
-                "SELECT * FROM transactions WHERE id = ?",
-                (tx_id,)
+                "SELECT * FROM transactions WHERE id = ?", (tx_id,)
             ).fetchone()
 
         if not row:
@@ -91,12 +93,16 @@ class TransactionRepository:
             source=row["source"],
             transaction_date=date.fromisoformat(row["transaction_date"]),
             amount=row["amount"],
-            post_date=date.fromisoformat(row["post_date"])
-            if row["post_date"] else None, description=row["description"],
+            post_date=(
+                date.fromisoformat(row["post_date"])
+                if row["post_date"]
+                else None
+            ),
+            description=row["description"],
             category_id=row["category_id"],
             verified_receipt=bool(row["verified_receipt"]),
             verified_statement=bool(row["verified_statement"]),
-            comment=row["comment"]
+            comment=row["comment"],
         )
 
     def list_all(self) -> list[Transaction]:
@@ -121,13 +127,16 @@ class TransactionRepository:
                 source=row["source"],
                 transaction_date=date.fromisoformat(row["transaction_date"]),
                 amount=row["amount"],
-                post_date=date.fromisoformat(
-                    row["post_date"]) if row["post_date"] else None,
+                post_date=(
+                    date.fromisoformat(row["post_date"])
+                    if row["post_date"]
+                    else None
+                ),
                 description=row["description"],
                 category_id=row["category_id"],
                 verified_receipt=bool(row["verified_receipt"]),
                 verified_statement=bool(row["verified_statement"]),
-                comment=row["comment"]
+                comment=row["comment"],
             )
             for row in rows
         ]
@@ -143,11 +152,14 @@ class TransactionRepository:
         :rtype: list[Transaction]
         """
         with self.connection as conn:
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT * FROM transactions
                 WHERE account_id = ?
                 ORDER BY transaction_date DESC
-            """, (account_id,)).fetchall()
+            """,
+                (account_id,),
+            ).fetchall()
 
         return [
             Transaction(
@@ -158,13 +170,16 @@ class TransactionRepository:
                 source=row["source"],
                 transaction_date=date.fromisoformat(row["transaction_date"]),
                 amount=row["amount"],
-                post_date=date.fromisoformat(
-                    row["post_date"]) if row["post_date"] else None,
+                post_date=(
+                    date.fromisoformat(row["post_date"])
+                    if row["post_date"]
+                    else None
+                ),
                 description=row["description"],
                 category_id=row["category_id"],
                 verified_receipt=bool(row["verified_receipt"]),
                 verified_statement=bool(row["verified_statement"]),
-                comment=row["comment"]
+                comment=row["comment"],
             )
             for row in rows
         ]
@@ -179,7 +194,7 @@ class TransactionRepository:
         account_id: Optional[int] = None,
         min_amount: Optional[float] = None,
         max_amount: Optional[float] = None,
-        description_contains: Optional[str] = None
+        description_contains: Optional[str] = None,
     ) -> list[Transaction]:
         """
         Filters transactions based on the provided criteria.
@@ -235,17 +250,22 @@ class TransactionRepository:
         return [
             Transaction(
                 id=row["id"],
+                date_addeded=datetime.fromisoformat(row["date_added"]),
+                date_modified=datetime.fromisoformat(row["date_modified"]),
+                source=row["source"],
                 account_id=row["account_id"],
                 transaction_date=date.fromisoformat(row["transaction_date"]),
                 amount=row["amount"],
-                post_date=date.fromisoformat(row["post_date"]) if row["post_date"] else None,
+                post_date=(
+                    date.fromisoformat(row["post_date"])
+                    if row["post_date"]
+                    else None
+                ),
                 description=row["description"],
                 category_id=row["category_id"],
-                cleared=bool(row["cleared"]),
-                effective_date=date.fromisoformat(row["effective_date"]) if row["effective_date"] else None,
                 verified_receipt=bool(row["verified_receipt"]),
                 verified_statement=bool(row["verified_statement"]),
-                comment=row["comment"]
+                comment=row["comment"],
             )
             for row in rows
         ]
@@ -262,7 +282,8 @@ class TransactionRepository:
         :type tx: Transaction
         """
         with self.connection as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE transactions
                 SET account_id = ?,
                     date_modified = ?,
@@ -275,19 +296,21 @@ class TransactionRepository:
                     verified_statement = ?,
                     comment = ?
                 WHERE id = ?
-            """, (
-                tx.account_id,
-                datetime.now().isoformat(),  # Update the modified date to now
-                tx.transaction_date.isoformat(),
-                tx.post_date.isoformat() if tx.post_date else None,
-                tx.description,
-                tx.amount,
-                tx.category_id,
-                int(tx.verified_receipt),
-                int(tx.verified_statement),
-                tx.comment,
-                tx.id
-            ))
+            """,
+                (
+                    tx.account_id,
+                    datetime.now().isoformat(),  # Update the modified date to now
+                    tx.transaction_date.isoformat(),
+                    tx.post_date.isoformat() if tx.post_date else None,
+                    tx.description,
+                    tx.amount,
+                    tx.category_id,
+                    int(tx.verified_receipt),
+                    int(tx.verified_statement),
+                    tx.comment,
+                    tx.id,
+                ),
+            )
 
     # ----------------------------
     # Delete

@@ -32,7 +32,7 @@ class NewCategoryDialog(QDialog):
         :param None:
         :return None:
         """
-        self.setWindowTitle("Add New Category")
+        self.setWindowTitle("Delete Category")
         self.setGeometry(850, 350, 400, 200)
         return
 
@@ -46,12 +46,10 @@ class NewCategoryDialog(QDialog):
         # Create all objects
 
         # Account Details
-        self.parent_category = CategoryDropdown(self.category_repository)
-        self.parent_category.populate_parent_categories()
-        self.category = QLineEdit()
+        self.category = CategoryDropdown(self.category_repository)
         # Buttons
-        self.btn_add = QPushButton("Add")
-        self.btn_add.clicked.connect(self.add)
+        self.btn_delete = QPushButton("Delete")
+        self.btn_delete.clicked.connect(self.delete)
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.clicked.connect(self.cancel)
 
@@ -72,13 +70,11 @@ class NewCategoryDialog(QDialog):
         row2 = QHBoxLayout()
 
         # Row 1
-        row1.addWidget(QLabel("Parent"))
-        row1.addWidget(self.parent_category)
         row1.addWidget(QLabel("Category"))
         row1.addWidget(self.category)
 
         # Row 2
-        row2.addWidget(self.btn_add)
+        row2.addWidget(self.btn_delete)
         row2.addWidget(self.btn_cancel)
 
         master.addLayout(row1)
@@ -98,7 +94,7 @@ class NewCategoryDialog(QDialog):
             self.setStyleSheet(_style)
         return
 
-    def add(self):
+    def delete(self):
         """
         Description
 
@@ -106,23 +102,15 @@ class NewCategoryDialog(QDialog):
         :return None:
         """
 
-        parent_id = self.parent_category.currentData()
-        category_str = self.category.text()
+        category_id = self.category.currentData()
 
-        if not category_str:
+        if category_id is None:
             QMessageBox.warning(self, "Input Error", "Please provide category.")
             return
+        else:
+            print(f"Deleting category with ID: {category_id}")
 
-        if self.category_repository.category_exists(parent_id, category_str):
-            QMessageBox.warning(self, "Input Error", "Category already exists.")
-            return
-
-        print(f"Adding category '{category_str}' with parent ID {parent_id}")
-
-        category: Category = Category(
-            id=None, name=category_str, parent_id=parent_id
-        )
-        self.value = category
+        self.value = category_id
         self.accept()
         return
 

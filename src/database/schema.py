@@ -1,11 +1,11 @@
 # database/schema.py
 
 from sqlite3 import Connection
-from database.connection import get_connection
 
 
 def initialize_schema(connection: Connection) -> None:
-    connection.executescript("""
+    connection.executescript(
+        """
     CREATE TABLE IF NOT EXISTS accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -33,11 +33,11 @@ def initialize_schema(connection: Connection) -> None:
         description TEXT,
         amount REAL NOT NULL,
         category_id INTEGER,
-        cleared INTEGER NOT NULL DEFAULT 0,
         verified_receipt INTEGER NOT NULL DEFAULT 0,
         verified_statement INTEGER NOT NULL DEFAULT 0,
         comment TEXT,
         FOREIGN KEY (account_id) REFERENCES accounts(id),
         FOREIGN KEY (category_id) REFERENCES categories(id)
     );
-    """)
+    """
+    )

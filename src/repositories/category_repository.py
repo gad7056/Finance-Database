@@ -1,8 +1,8 @@
 # repositories/category_repository.py
 
-from database.connection import get_connection
-from models.models import Category
 from sqlite3 import Connection
+
+from models.models import Category
 
 
 class CategoryRepository:
@@ -32,13 +32,13 @@ class CategoryRepository:
         #     if parent is None or parent.parent_id is not None:
         #         raise ValueError("Invalid parent category.")
         with self.connection as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO categories (name, parent_id)
                 VALUES (?, ?)
-            """, (
-                category.name,
-                category.parent_id
-            ))
+            """,
+                (category.name, category.parent_id),
+            )
         return cursor.lastrowid
 
     # ----------------------------
@@ -56,17 +56,14 @@ class CategoryRepository:
         """
         with self.connection as conn:
             row = conn.execute(
-                "SELECT * FROM categories WHERE id = ?",
-                (category_id,)
+                "SELECT * FROM categories WHERE id = ?", (category_id,)
             ).fetchone()
 
         if not row:
             return None
 
         return Category(
-            id=row["id"],
-            name=row["name"],
-            parent_id=row["parent_id"]
+            id=row["id"], name=row["name"], parent_id=row["parent_id"]
         )
 
     def get_id_by_name(self, name: str) -> int | None:
@@ -81,8 +78,7 @@ class CategoryRepository:
         """
         with self.connection as conn:
             row = conn.execute(
-                "SELECT id FROM categories WHERE name = ?",
-                (name,)
+                "SELECT id FROM categories WHERE name = ?", (name,)
             ).fetchone()
 
         if not row:
@@ -104,11 +100,7 @@ class CategoryRepository:
             ).fetchall()
 
         return [
-            Category(
-                id=row["id"],
-                name=row["name"],
-                parent_id=row["parent_id"]
-            )
+            Category(id=row["id"], name=row["name"], parent_id=row["parent_id"])
             for row in rows
         ]
 
@@ -121,18 +113,16 @@ class CategoryRepository:
         :rtype: list[Category]
         """
         with self.connection as conn:
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT * FROM categories
                 WHERE parent_id IS NULL
                 ORDER BY name
-            """).fetchall()
+            """
+            ).fetchall()
 
         return [
-            Category(
-                id=row["id"],
-                name=row["name"],
-                parent_id=None
-            )
+            Category(id=row["id"], name=row["name"], parent_id=None)
             for row in rows
         ]
 
@@ -145,18 +135,16 @@ class CategoryRepository:
         :rtype: list[Category]
         """
         with self.connection as conn:
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT * FROM categories
                 WHERE parent_id IS NOT NULL
                 ORDER BY name
-            """).fetchall()
+            """
+            ).fetchall()
 
         return [
-            Category(
-                id=row["id"],
-                name=row["name"],
-                parent_id=row["parent_id"]
-            )
+            Category(id=row["id"], name=row["name"], parent_id=row["parent_id"])
             for row in rows
         ]
 
@@ -171,18 +159,17 @@ class CategoryRepository:
         :rtype: list[Category]
         """
         with self.connection as conn:
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT * FROM categories
                 WHERE parent_id = ?
                 ORDER BY name
-            """, (parent_id,)).fetchall()
+            """,
+                (parent_id,),
+            ).fetchall()
 
         return [
-            Category(
-                id=row["id"],
-                name=row["name"],
-                parent_id=row["parent_id"]
-            )
+            Category(id=row["id"], name=row["name"], parent_id=row["parent_id"])
             for row in rows
         ]
 
@@ -197,20 +184,21 @@ class CategoryRepository:
         :rtype: Category | None
         """
         with self.connection as conn:
-            row = conn.execute("""
+            row = conn.execute(
+                """
                 SELECT parent.*
                 FROM categories AS child
                 JOIN categories AS parent ON child.parent_id = parent.id
                 WHERE child.id = ?
-            """, (category_id,)).fetchone()
+            """,
+                (category_id,),
+            ).fetchone()
 
         if not row:
             return None
 
         return Category(
-            id=row["id"],
-            name=row["name"],
-            parent_id=row["parent_id"]
+            id=row["id"], name=row["name"], parent_id=row["parent_id"]
         )
 
     def category_exists(self, parent_id: int, name: str) -> bool:
@@ -226,11 +214,14 @@ class CategoryRepository:
         :rtype: bool
         """
         with self.connection as conn:
-            row = conn.execute("""
+            row = conn.execute(
+                """
                 SELECT 1 FROM categories
                 WHERE parent_id = ? AND name = ?
                 LIMIT 1
-            """, (parent_id, name)).fetchone()
+            """,
+                (parent_id, name),
+            ).fetchone()
 
         return bool(row)
 
@@ -241,6 +232,7 @@ class CategoryRepository:
         :param self: The instance of the repository.
         :return None:
         """
+
         def print_category(category: Category, level=0):
             print("  " * level + f"- {category.name} (ID: {category.id})")
             children = self.list_children_of(category.id)
@@ -268,21 +260,20 @@ class CategoryRepository:
             raise ValueError("Category must have an id to update")
 
         with self.connection as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE categories
                 SET name = ?, parent_id = ?
                 WHERE id = ?
-            """, (
-                category.name,
-                category.parent_id,
-                category.id
-            ))
+            """,
+                (category.name, category.parent_id, category.id),
+            )
         return
 
     # ----------------------------
     # Delete
     # ----------------------------
-    def delete(self, category_id: int) -> None:
+    def delete(self, category_id: int) -> bool:
         """
         Deletes a category only if it has no children.
         Prevents accidental orphan trees.
@@ -290,21 +281,24 @@ class CategoryRepository:
         :param self: The instance of the repository.
         :param category_id: The ID of the category to delete.
         :type category_id: int
-        :return None:
+        :return: True if the category was deleted, False otherwise.
+        :rtype: bool
         """
 
         with self.connection as conn:
-            child = conn.execute("""
+            child = conn.execute(
+                """
                 SELECT 1 FROM categories
                 WHERE parent_id = ?
                 LIMIT 1
-            """, (category_id,)).fetchone()
+            """,
+                (category_id,),
+            ).fetchone()
 
             if child:
                 raise ValueError("Cannot delete category with subcategories")
 
-            conn.execute(
-                "DELETE FROM categories WHERE id = ?",
-                (category_id,)
+            cursor = conn.execute(
+                "DELETE FROM categories WHERE id = ?", (category_id,)
             )
-        return
+            return cursor.rowcount > 0

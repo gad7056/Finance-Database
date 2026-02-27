@@ -1,19 +1,32 @@
 # New transaction dialog
 
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QDateEdit, QMessageBox
 from PyQt6.QtCore import QDate
+from PyQt6.QtWidgets import (
+    QDateEdit,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
+
+from models.models import Transaction
 from repositories.account_repository import AccountRepository
 from repositories.category_repository import CategoryRepository
+from services.transaction_factory import TransactionService
 from ui.account_dropdown import AccountDropdown
 from ui.category_dropdown import CategoryDropdown
-from models.models import Transaction
-from services.transaction_factory import TransactionService
 
 
 class NewTransactionDialog(QDialog):
 
-    def __init__(self, account_repository: AccountRepository,
-                 category_repository: CategoryRepository):
+    def __init__(
+        self,
+        account_repository: AccountRepository,
+        category_repository: CategoryRepository,
+    ):
         super().__init__()
         self.account_repository = account_repository
         self.category_repository = category_repository
@@ -119,7 +132,7 @@ class NewTransactionDialog(QDialog):
         :param None:
         :return None:
         """
-        date = self.date_box.date().toString("yyyy-MM-dd")
+        date = self.date_box.date().toPyDate()
         description = self.description.text()
         amount = self.amount.text()
         category = self.category_dropdown.currentText()
@@ -129,8 +142,11 @@ class NewTransactionDialog(QDialog):
         account = account.split("(")
 
         if not description or not amount:
-            QMessageBox.warning(self, "Input Error",
-                                "Please provide both description and amount.")
+            QMessageBox.warning(
+                self,
+                "Input Error",
+                "Please provide both description and amount.",
+            )
             return
         transaction: Transaction = TransactionService.create_new(
             account_id=self.account_repository.get_id_by_name(account[0]),
@@ -153,14 +169,3 @@ class NewTransactionDialog(QDialog):
         """
         self.reject()
         return
-
-
-# test dialog
-if __name__ == "__main__":
-    import sys
-    from PyQt6.QtWidgets import QApplication
-
-    app = QApplication(sys.argv)
-    dialog = NewTransactionDialog(AccountManager(), CategoryManager())
-    dialog.show()
-    sys.exit(app.exec())

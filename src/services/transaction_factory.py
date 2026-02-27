@@ -1,6 +1,7 @@
 # services/transaction_service.py
 
-from datetime import datetime
+from datetime import datetime, timezone
+
 from models.models import Transaction
 
 
@@ -21,7 +22,7 @@ class TransactionService:
         verified_statement=False,
     ) -> Transaction:
 
-        now = datetime.now(datetime.timezone.utc)
+        now = datetime.now(timezone.utc)
 
         return Transaction(
             id=None,

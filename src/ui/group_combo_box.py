@@ -9,8 +9,8 @@ GroupRole = QtCore.Qt.ItemDataRole.UserRole
 class GroupDelegate(QtWidgets.QStyledItemDelegate):
 
     def initStyleOption(
-            self, option: QtWidgets.QStyleOptionViewItem,
-            index: QtCore.QModelIndex) -> None:
+        self, option: QtWidgets.QStyleOptionViewItem, index: QtCore.QModelIndex
+    ) -> None:
         """
         Initialize the style option for the item delegate.
 
@@ -24,8 +24,12 @@ class GroupDelegate(QtWidgets.QStyledItemDelegate):
         if not index.data(GroupRole):
             option.text = "   " + option.text
 
-    def paint(self, painter: QtGui.QPainter, option: QtWidgets.QStyleOptionViewItem,
-              index: QtCore.QModelIndex) -> None:
+    def paint(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex,
+    ) -> None:
         """
         Prevent highlight for group items
 
@@ -82,6 +86,7 @@ class GroupComboBox(QtWidgets.QComboBox):
         self.setModel(QtGui.QStandardItemModel(self))
         delegate = GroupDelegate(self)
         self.setItemDelegate(delegate)
+        self.currentIndexChanged.connect(lambda: self.on_selection_changed())
 
     def addGroup(self, text: str) -> GroupItem:
         """
@@ -109,6 +114,28 @@ class GroupComboBox(QtWidgets.QComboBox):
         self.model().appendRow(it)
         return it
 
+    def on_selection_changed(self):
+        # Retrieve custom data for the selected item
+        data = self.currentData()
+        print("Selected item data:", data)
+
+    def currentData(self, role=QtCore.Qt.ItemDataRole.UserRole + 1):
+        """
+        Get the custom data of the currently selected item.
+
+        :param self: The instance of the combo box.
+        :param role: The role for which to retrieve the data.
+        :type role: int
+        :return: The custom data of the currently selected item.
+        :rtype: Any
+        """
+        index = self.currentIndex()
+        if index < 0:
+            return None
+        return (
+            self.model().itemFromIndex(self.model().index(index, 0)).data(role)
+        )
+
 
 class Example(QtWidgets.QWidget):
     def __init__(self):
@@ -119,7 +146,7 @@ class Example(QtWidgets.QWidget):
         """
         Initialize the user interface.
 
-        :return None: 
+        :return None:
         """
         combo = GroupComboBox()
 
@@ -134,7 +161,8 @@ class Example(QtWidgets.QWidget):
         group2.addChild("option_5", 5)
 
         combo.currentIndexChanged.connect(
-            lambda: self.on_selection_changed(combo))
+            lambda: self.on_selection_changed(combo)
+        )
 
         lay = QtWidgets.QVBoxLayout(self)
         lay.addWidget(combo)

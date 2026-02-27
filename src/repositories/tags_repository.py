@@ -1,8 +1,8 @@
 # repositories/tags_repository.py
 
-from database.connection import get_connection
-from models.models import Tag
 from sqlite3 import Connection
+
+from models.models import Tag
 
 
 class TagRepository:
@@ -28,8 +28,7 @@ class TagRepository:
         """
         with self.connection as conn:
             cursor = conn.execute(
-                "INSERT INTO tags (name) VALUES (?)",
-                (tag.name,)
+                "INSERT INTO tags (name) VALUES (?)", (tag.name,)
             )
         return cursor.lastrowid
 
@@ -44,10 +43,13 @@ class TagRepository:
         :type tag_id: int
         """
         with self.connection as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR IGNORE INTO transaction_tags (transaction_id, tag_id)
                 VALUES (?, ?)
-            """, (transaction_id, tag_id))
+            """,
+                (transaction_id, tag_id),
+            )
 
     # ----------------------------
     # Read
@@ -63,12 +65,15 @@ class TagRepository:
         :rtype: list[Tag]
         """
         with self.connection as conn:
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT t.id, t.name
                 FROM tags t
                 JOIN transaction_tags tt ON t.id = tt.tag_id
                 WHERE tt.transaction_id = ?
-            """, (transaction_id,)).fetchall()
+            """,
+                (transaction_id,),
+            ).fetchall()
 
         return [Tag(id=row["id"], name=row["name"]) for row in rows]
 
@@ -84,11 +89,14 @@ class TagRepository:
         :type tag: Tag
         """
         with self.connection as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE tags
                 SET name = ?
                 WHERE id = ?
-            """, (tag.name, tag.id))
+            """,
+                (tag.name, tag.id),
+            )
 
     # ----------------------------
     # Delete
@@ -104,4 +112,5 @@ class TagRepository:
         with self.connection as conn:
             conn.execute("DELETE FROM tags WHERE id = ?", (tag_id,))
             conn.execute(
-                "DELETE FROM transaction_tags WHERE tag_id = ?", (tag_id,))
+                "DELETE FROM transaction_tags WHERE tag_id = ?", (tag_id,)
+            )

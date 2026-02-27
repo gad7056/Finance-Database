@@ -1,20 +1,31 @@
 # App design
 # doc.qt.io
 
-from PyQt6.QtWidgets import (
-    QWidget, QDialog, QLabel, QPushButton, QLineEdit, QDateEdit,
-    QTableWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QTableWidgetItem,
-    QHeaderView)
-from PyQt6.QtCore import QDate
+from csv.csv_importer import get_transactions_from_csv
 from sqlite3 import Connection
 
-from ui.account_dropdown import AccountDropdown
-from ui.category_dropdown import CategoryDropdown
-from csv.csv_importer import get_transactions_from_csv
+from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtWidgets import (
+    QDateEdit,
+    QDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from models.models import Transaction
 from repositories.account_repository import AccountRepository
 from repositories.category_repository import CategoryRepository
 from repositories.transaction_repository import TransactionRepository
-from models.models import Transaction
+from ui.account_dropdown import AccountDropdown
+from ui.category_dropdown import CategoryDropdown
 
 
 class TransactionApp(QWidget):
@@ -83,15 +94,28 @@ class TransactionApp(QWidget):
         # Add Category button
         self.btn_add_category = QPushButton("Add Category")
         self.btn_add_category.clicked.connect(self.add_category)
+        # Delete Category button
+        self.btn_delete_category = QPushButton("Delete Category")
+        self.btn_delete_category.clicked.connect(self.delete_category)
+        self.btn_delete_category.setObjectName("btn_delete")
 
         # Table
-        table_headers = ["Transaction Date", "Post Date",
-                         "Description", "Comment",
-                         "Amount", "Category", "Account",
-                         "Receipt Verified", "Statement Verified"]
+        table_headers = [
+            "Transaction Date",
+            "Post Date",
+            "Description",
+            "Comment",
+            "Amount",
+            "Category",
+            "Account",
+            "Receipt Verified",
+            "Statement Verified",
+        ]
         self.table = QTableWidget(0, len(table_headers))
         self.table.setHorizontalHeaderLabels(table_headers)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
 
         # Layout and styles
         self.setup_layout()
@@ -136,6 +160,7 @@ class TransactionApp(QWidget):
         row3.addWidget(self.btn_import_csv)
         row3.addWidget(self.btn_add_account)
         row3.addWidget(self.btn_add_category)
+        row3.addWidget(self.btn_delete_category)
 
         # Row 4
         row4.addWidget(self.table)
@@ -166,26 +191,70 @@ class TransactionApp(QWidget):
         :param self: The instance of the application.
         :return None:
         """
-        self.table.setRowCount(0)
         if transactions is None:
             transactions = self.transaction_repository.list_all()
-        for row_idx, transaction in enumerate(transactions):
-            self.table.insertRow(row_idx)
-            # for column_idx, data in enumerate(transaction):
-            for column_idx in range(transaction.count()):
-                data = transaction.value(column_idx)
-                # Format amount column as currency
-                if column_idx.fieldname() == "amount":
-                    data = float(data)
-                    if data < 0:
-                        formatted_data = f"-${abs(data):.2f}"
-                    else:
-                        formatted_data = f"${abs(data):.2f}"
-                    self.table.setItem(row_idx, column_idx,
-                                       QTableWidgetItem(formatted_data))
-                else:
-                    self.table.setItem(row_idx, column_idx,
-                                       QTableWidgetItem(str(data)))
+
+        table = self.table
+        table.setRowCount(len(transactions))
+
+        for row_index, tx in enumerate(transactions):
+
+            # --- Transaction Date ---
+            item = QTableWidgetItem(tx.transaction_date.isoformat())
+            item.setData(Qt.ItemDataRole.UserRole, tx.id)  # store ID here
+            table.setItem(row_index, 0, item)
+
+            # --- Post Date ---
+            table.setItem(
+                row_index,
+                1,
+                QTableWidgetItem(
+                    tx.post_date.isoformat() if tx.post_date else ""
+                ),
+            )
+
+            # --- Description ---
+            table.setItem(row_index, 2, QTableWidgetItem(tx.description or ""))
+
+            # --- Comment ---
+            table.setItem(row_index, 3, QTableWidgetItem(tx.comment or ""))
+
+            # --- Amount ---
+            if tx.amount < 0:
+                amount_str = f"-${-tx.amount:,.2f}"
+            else:
+                amount_str = f"${tx.amount:,.2f}"
+            amount_item = QTableWidgetItem(amount_str)
+            amount_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
+            table.setItem(row_index, 4, amount_item)
+
+            # --- Category ID ---
+            table.setItem(
+                row_index,
+                5,
+                QTableWidgetItem(str(tx.category_id) if tx.category_id else ""),
+            )
+
+            # --- Account ID ---
+            table.setItem(row_index, 6, QTableWidgetItem(str(tx.account_id)))
+
+            # --- Receipt Verified ---
+            table.setItem(
+                row_index,
+                7,
+                QTableWidgetItem("Yes" if tx.verified_receipt else "No"),
+            )
+
+            # --- Statement Verified ---
+            table.setItem(
+                row_index,
+                8,
+                QTableWidgetItem("Yes" if tx.verified_statement else "No"),
+            )
+
+        table.resizeColumnsToContents()
         return
 
     def add_transaction(self) -> None:
@@ -198,12 +267,14 @@ class TransactionApp(QWidget):
         from ui.new_transaction import NewTransactionDialog
 
         new_transaction_dialog = NewTransactionDialog(
-            self.account_repository, self.category_repository)
+            self.account_repository, self.category_repository
+        )
         if new_transaction_dialog.exec() == QDialog.DialogCode.Rejected:
             return
         if not self.transaction_repository.add(new_transaction_dialog.value):
-            QMessageBox.critical(self, "Database Error",
-                                 "Failed to add transaction.")
+            QMessageBox.critical(
+                self, "Database Error", "Failed to add transaction."
+            )
             return
         self.load_transactions()
         return
@@ -218,24 +289,32 @@ class TransactionApp(QWidget):
         selected_items = self.table.selectedItems()
         if not selected_items:
             QMessageBox.warning(
-                self, "Selection Error",
-                "Please select one or more transactions to delete.")
+                self,
+                "Selection Error",
+                "Please select one or more transactions to delete.",
+            )
             return
         # Get unique row indices from selected items
         selected_rows = set(self.table.row(item) for item in selected_items)
         # Reverse order to avoid index shifting
         for row in sorted(selected_rows, reverse=True):
             transaction_id = int(self.table.item(row, column.ID).text())
-            n_items_selected = "" if len(
-                selected_items) == 0 else len(selected_items)
-            confirm = QMessageBox.question(self, "Confirm Deletion",
-                                           f"Are you sure you want to delete {n_items_selected} transaction?",
-                                           QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            n_items_selected = (
+                "" if len(selected_items) == 0 else len(selected_items)
+            )
+            confirm = QMessageBox.question(
+                self,
+                "Confirm Deletion",
+                f"Are you sure you want to delete {n_items_selected} transaction?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
             if confirm == QMessageBox.StandardButton.Yes:
                 if not self.transaction_repository.delete(transaction_id):
                     QMessageBox.critical(
-                        self, "Database Error",
-                        "Failed to delete transaction ID {transaction_id}.")
+                        self,
+                        "Database Error",
+                        "Failed to delete transaction ID {transaction_id}.",
+                    )
                     return
                 self.load_transactions()
         return
@@ -250,7 +329,8 @@ class TransactionApp(QWidget):
         from PyQt6.QtWidgets import QFileDialog
 
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "Open CSV File", "", "CSV Files (*.csv);;All Files (*)")
+            self, "Open CSV File", "", "CSV Files (*.csv);;All Files (*)"
+        )
         if not file_path:
             return  # User cancelled the dialog
 
@@ -258,8 +338,10 @@ class TransactionApp(QWidget):
         for transaction in transactions:
             if not self.transaction_repository.add(transaction):
                 QMessageBox.critical(
-                    self, "Import Error",
-                    "Failed to import transactions from CSV.")
+                    self,
+                    "Import Error",
+                    "Failed to import transactions from CSV.",
+                )
                 return
 
         # if not add_transactions_from_csv(file_path):
@@ -267,8 +349,10 @@ class TransactionApp(QWidget):
         self.load_transactions()
 
         QMessageBox.information(
-            self, "Import Successful",
-            "Transactions imported successfully from CSV.")
+            self,
+            "Import Successful",
+            "Transactions imported successfully from CSV.",
+        )
         return
 
     def add_account(self) -> None:
@@ -284,8 +368,9 @@ class TransactionApp(QWidget):
         if new_account_dialog.exec() == QDialog.DialogCode.Rejected:
             return
         if not self.account_repository.add(new_account_dialog.value):
-            QMessageBox.critical(self, "Database Error",
-                                 "Failed to add account.")
+            QMessageBox.critical(
+                self, "Database Error", "Failed to add account."
+            )
             return
         # Refresh account dropdown
         self.account_dropdown.populate_accounts()
@@ -304,9 +389,37 @@ class TransactionApp(QWidget):
         if new_category_dialog.exec() == QDialog.DialogCode.Rejected:
             return
         if not self.category_repository.add(new_category_dialog.value):
-            QMessageBox.critical(self, "Database Error",
-                                 "Failed to add category.")
+            QMessageBox.critical(
+                self, "Database Error", "Failed to add category."
+            )
             return
+        # Refresh category dropdown
+        self.category_dropdown.populate_categories()
+        return
+
+    def delete_category(self) -> None:
+        """
+        Description
+
+        :param self: The instance of the application.
+        :return None:
+        """
+        from ui.window_delete_category import NewCategoryDialog
+
+        delete_category_dialog = NewCategoryDialog(self.category_repository)
+        if delete_category_dialog.exec() == QDialog.DialogCode.Rejected:
+            print("Delete category cancelled.")
+            return
+        category_id = delete_category_dialog.value
+        if category_id is None:
+            print("No category selected for deletion.")
+            return
+        if not self.category_repository.delete(category_id):
+            QMessageBox.critical(
+                self, "Database Error", "Failed to delete category."
+            )
+            return
+        print(f"Deleted category with ID: {category_id}")
         # Refresh category dropdown
         self.category_dropdown.populate_categories()
         return
